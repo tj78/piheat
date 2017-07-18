@@ -45,7 +45,7 @@ Needs to be executed with root privileges:
 This will run unit tests for each of the functions in [piheat.py](./src/piheat.py) and generate a log file '/var/log/test_piheat.log'
 
 # License
-This project is licensed under the GNU GPL version 3 license - please see the ./LICENSE.txt file for details.
+This project is licensed under the GNU GPL Version 3 License - please see the [LICENSE](./LICENSE) file for details.
 
 # Acknowledgements
 [Raspberry Pi powered heating controller](http://www.whizzy.org/2014/01/raspberry-pi-powered-heating-controller-part-1/)    - was invaluable for understanding the original system I was modifying.
