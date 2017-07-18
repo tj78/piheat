@@ -90,6 +90,7 @@ def main():
         logging.debug("Database was updated successfully")
     else:
         logging.error("Error - Database could not be updated")
+    logging.shutdown()
 
 
 # Only run the main function when not under test
