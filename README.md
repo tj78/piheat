@@ -1,7 +1,7 @@
 # piheat
 Raspberry Pi heating &amp; hot water controller
 
-For a full background to the project, with reference materials, please read [background.txt](./docs/background.txt)
+For a full background to the project, with reference materials, please read [background.md](./docs/background.md)
 
 # Usage
 ## [piheat.py](./src/piheat.py)
