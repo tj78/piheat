@@ -2,10 +2,10 @@
 This project started from a desire to improve upon the basic boiler programmer that was currently installed, which only allowed two time periods (switching on and off twice each day, every day), and the hot water and central heating could each be set to 'Off', 'Continuous', 'Once', or 'Twice', which didn't allow for much flexibility.
 
 
-Looking around for some inspiration I found an online article (https://www.stuff.tv/features/how-build-homemade-nest-thermostat) that acted as a starting point for my code.  A lot of instances where other people are doing the same thing, including in this example, the Raspberry Pi is only controlling the heating, probably because it is being used with a combi-boiler so there is hot water on demand.  However, I have a separate hot water tank and I wanted to make sure that I can turn the boiler on to produce hot water independent from the central heating timings if needed.
+Looking around for some inspiration I found [How to build a homemade Nest thermostat](https://www.stuff.tv/features/how-build-homemade-nest-thermostat) that acted as a starting point for my code.  A lot of instances where other people are doing the same thing, including in this example, the Raspberry Pi is only controlling the heating, probably because it is being used with a combi-boiler so there is hot water on demand.  However, I have a separate hot water tank and I wanted to make sure that I can turn the boiler on to produce hot water independent from the central heating timings if needed.
 
 
-The article above uses IFTTT (https://ifttt.com/) as a major part of the control system, but when I tested working this way I found there were very inconsistent delays between a time being set and an email being sent, which wasn't what I was looking for.
+The article above uses [IFTTT](https://ifttt.com/) as a major part of the control system, but when I tested working this way I found there were very inconsistent delays between a time being set and an email being sent, which wasn't what I was looking for.
 
 What I did like about the setup was the use of a Gmail account, which allows the Raspberry Pi to receive commands via email from anywhere (for controlling the heating/hot water remotely), as long as there was an active internet connection.
 
@@ -32,7 +32,7 @@ I already had a Raspberry Pi in my living room, which is where I wanted to measu
 
 I chose the Raspberry Pi Zero to be the main controller as it is cheap and small, so with the addition of a micro USB WiFi dongle it can be placed near to the existing programmer and still receive the temperature from the probe in the living room.
 
-In order to keep the wiring simple I wanted to replace the each signal that the old programmer produced.  These signals are shown in the following ASCII diagram:
+In order to keep the wiring simple I wanted to replace the each signal that the old programmer produced.  These signals are shown in the following table:
 
 All off | HW only | CH only | All on
 :------:|:-------:|:-------:|:------:
@@ -40,19 +40,20 @@ dhw_off | 0       | 1       | 0
 dhw_on	| 0       | 0       | 1
 ch_on   | 0       | 1       | 1
 
-The names dhw_off (hot water off), dhw_on (hot water on) and ch_on (central heating on) are taken from the old programmer's manual.  The dhw_off signal is needed to operate a valve that allows the hot water from the pump to be directed to the radiators, or the hot water tank, or both.  This website (https://www.whizzy.org/2014/01/raspberry-pi-powered-heating-controller-part-1/) explains and illustrates this very well.
+The names dhw_off (hot water off), dhw_on (hot water on) and ch_on (central heating on) are taken from the old programmer's manual.  The dhw_off signal is needed to operate a valve that allows the hot water from the pump to be directed to the radiators, or the hot water tank, or both.  This [Raspberry Pi project](https://www.whizzy.org/2014/01/raspberry-pi-powered-heating-controller-part-1/) explains and illustrates this very well.
 
-The Raspberry Pi can't control the boiler directly because it can only produce up to 3.3V, not the required 240V.  So the Raspberry Pi is used to control a set of relays that do the actual switching, whilst separating the 3.3V and 240V circuits.  A word of warning for anyone trying to attempt a project like this, MAINS VOLTAGE IS VERY DANGEROUS, so if you're not confident in what you are doing, DO NOT TOUCH IT!  If you decide to go ahead, take all necessary precautions and make sure that the sockets and circuitry you are working on are definitely off.
+The Raspberry Pi can't control the boiler directly because it can only produce up to 3.3V, not the required 240V.  So the Raspberry Pi is used to control a set of relays that do the actual switching, whilst separating the 3.3V and 240V circuits.  A word of warning for anyone trying to attempt a project like this, **Mains voltage is very dangerous**, so if you're not confident in what you are doing, **do not touch it!**  If you decide to go ahead, take all necessary precautions and make sure that the sockets and circuitry you are working on are definitely off.
 
-For the relays, I've used the ModMyPI PiOT Relay Board (https://www.modmypi.com/raspberry-pi/breakout-boards/modmypi/modmypi-piot-relay-board) because I was confident that it would be OK to connect it to the mains voltage (through a fused connection) without any issues.  Also, it could be directly connected to the Raspberry Pi Zero, and then fully enclosed, so as to prevent accidents.
+For the relays, I've used the [ModMyPI PiOT Relay Board](https://www.modmypi.com/raspberry-pi/breakout-boards/modmypi/modmypi-piot-relay-board) because I was confident that it would be OK to connect it to the mains voltage (through a fused connection) without any issues.  Also, it could be directly connected to the Raspberry Pi Zero, and then fully enclosed, so as to prevent accidents.
 
-The relays on the board are of the SPDT (Single Pole Double Throw) type (http://www.electronics-tutorials.ws/io/io_5.html).
+The relays on the board are of the [SPDT](http://www.electronics-tutorials.ws/io/io_5.html) (Single Pole Double Throw) type.
 
 
 
 The ASCII diagram below shows a representation of the connections in my setup.
 
-##### KEY
+    KEY
+    ===
     COM - Common
     NC  - Normally Closed
     NO  - Normally Open
@@ -97,6 +98,10 @@ The original system has a number of safety features built in, so by just replaci
 ## Issues
 This setup has now been working successfully for more than three months.  The only issues have been:
 
-    1. Getting automatically disconnected from Gmail - this has been fixed by checking to see if we are logged in, if not, log back in.  In a future update this will be fixed more elegantly by using the IMAP IDLE command.
+1. Getting automatically disconnected from Gmail
 
-    2. On the rare occasions that we have lost our internet connection, piheat.py crashes because it can't connect to Gmail.  I have already written a python program that will connect to my router and reset it, which usually fixes the problem.  This will be incorporated into a future update when I've found a satisfactory solution.
+   This has been fixed by checking to see if we are logged in, if not, log back in.  In a future update this will be fixed more elegantly by using the IMAP IDLE command.  
+
+2. Crashing when internet connection is lost.
+
+   On the rare occasions that we have lost our internet connection, piheat.py crashes because it can't connect to Gmail.  I have already written a python program that will connect to my router and reset it, which usually fixes the problem.  This will be incorporated into a future update when I've found a satisfactory solution to testing for an internet connection.  
