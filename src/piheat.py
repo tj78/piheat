@@ -266,11 +266,19 @@ class Gmail(object):
                     if command is 'CH':
                         piheat_control = 'on'
                         livtemp = self.piheat_db.my_query("SELECT livtemp FROM temp_log")
-                        empty, target_temp = var_subject.split('=')
-                        target_temp = target_temp.split()
-                        sql = "UPDATE target_temp SET temp=(%s)"
-                        self.piheat_db.my_update(sql, target_temp)
-                        self.target_temp = float(target_temp[0])
+                        command_pos = var_subject.find('CH =')
+                        # string.find() returns -1 if it fails to find the string
+                        if command_pos != -1:
+                            # Extract the string of numbers for target_temp
+                            temp_str = var_subject.strip()[command_pos+4:command_pos+7]
+                        try:
+                            # Test that a number has been found
+                            target_temp = int(temp_str)
+                            sql = "UPDATE target_temp SET temp=(%s)"
+                            self.piheat_db.my_update(sql, temp_str)
+                            self.target_temp = float(target_temp)
+                        except:
+                            pass
                         ctrl_pio.ch_on(livtemp, self.target_temp)
                 elif 'off' in var_subject:
                     piheat_control = 'off'
