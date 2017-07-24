@@ -215,6 +215,8 @@ class Gmail(object):
                     logging.debug("Message subject is.....")
                     logging.debug(msg['subject'])
             var_subject = msg['subject']
+            if 'Notification' in var_subject:
+                var_subject = var_subject.replace('Notification', '')
             self.check_subject(var_subject, latest_email_id)
             return var_subject
         else:
