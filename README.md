@@ -35,7 +35,8 @@ Originally this project started from a desire to improve upon my old boiler cont
 ## Prerequisites:
 MySQL, pthyon, and a number of python libraries that will be prompted for when trying to execute [piheat.py](./src/piheat.py)
 A .netrc file containing login information for Gmail and the MySQL database, stored in the root user's home directory.
-## Installing
+## Installation
+On the main page of this repository, click on the 'Clone or download' button, and either click 'Download ZIP', or follow the [GitHub instructions](https://help.github.com/articles/cloning-a-repository/), then follow the [Usage](#usage) instructions.
 
 # Running the tests
 ## [test_piheat.py](./tests/test_piheat.py)
