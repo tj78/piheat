@@ -15,6 +15,7 @@ Needs to produce these signals in order to replace old programmer
 |ch_on    ||    0    ||    1    ||   1    |
  =========================================
 """
+import sys
 
 # Imports for reading from gmail
 import imaplib2
@@ -27,12 +28,16 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
-debug = True
 import logging
+try:
+    debug = sys.argv[1]
+except:
+    debug = False
 if debug:
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
 else:
-    logging.basicConfig(filename='/var/log/piheat.log', level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='/var/log/piheat.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
+#    logging.basicConfig(filename='/var/log/piheat.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 # Import python MySQL module
 import MySQLdb
@@ -103,8 +108,14 @@ class Gmail(object):
         """
         mailhost = 'imap.gmail.com'
         g_secrets = UserData()
-        self.mail = imaplib2.IMAP4_SSL(host=mailhost)
+        if debug:
+            self.mail = imaplib2.IMAP4_SSL(host=mailhost, debug=4, timeout=1)
+        else:
+            self.mail = imaplib2.IMAP4_SSL(host=mailhost, timeout=1)
         self.piheat_db = DBase()
+        self.commands = ["st699", "CH", "HW"]
+        self.target_temp = None
+#        self.pi_state = {}
 
         # Read from .netrc file
         login, account, password = g_secrets.get_secrets(mailhost)
@@ -174,7 +185,7 @@ class Gmail(object):
         return self.target_temp
 
 
-    def read_folder(self, mailbox, mail_state):
+    def read_folder(self, mailbox, mail_state, pi_state):
         """Selects mailbox and waits for new email, then returns its subject header.
         
         mailbox: string
@@ -186,12 +197,14 @@ class Gmail(object):
         # so need to check connection to Gmail, if it fails, login again
         # Now with use of IMAP IDLE command this should no longer be necessary.
         if mail_state == 'SELECTED':
-            pass
+            message = "Mailbox " + mailbox + " selected."
+            logging.debug(message)
         elif mail_state == 'AUTH':
             logging.debug("Select mailbox")
             response, empty = self.select(mailbox)
             if response == 'OK':
-                logging.debug("Mailbox selected.")
+                message = "Mailbox " + mailbox + " selected."
+                logging.debug(message)
             else:
                 logging.error("Response was:")
                 logging.error(response)
@@ -199,7 +212,8 @@ class Gmail(object):
         else:
             raise RuntimeError("read_folder:  Not in 'AUTH' or 'SELECTED' state.")
         # We have reached the 'SELECTED' state, so we can continue
-        self.mail.idle()
+        rv = self.mail.idle(timeout=1290)
+        logging.debug(("IDLE response is:  ", rv))
         # 'empty' collects the response from 'self.mail.search'
         empty, data = self.mail.search(None, 'ALL')
         id_list = data[0].split()
@@ -208,7 +222,7 @@ class Gmail(object):
             latest_email_id = int( id_list[-1] )
             for i in range( latest_email_id, latest_email_id-1, -1):
                 # 'empty' collects the response from 'self.mail.fetch'
-                empty, data = self.mail.fetch( i, '(RFC822)')
+                empty, data = self.mail.fetch(i, '(RFC822)')
             for response_part in data:
                 if isinstance(response_part, tuple):
                     msg = email.message_from_string(response_part[1])
@@ -217,15 +231,18 @@ class Gmail(object):
             var_subject = msg['subject']
             if 'Notification' in var_subject:
                 var_subject = var_subject.replace('Notification', '')
-            self.check_subject(var_subject, latest_email_id)
-            return var_subject
+            if 'Mon' in var_subject:
+                var_subject = var_subject.replace('Mon', '')
+#            self.check_subject(var_subject, latest_email_id)
+#            return var_subject
+            return self.check_subject(var_subject, pi_state, latest_email_id)
         else:
             logging.debug(("No emails in selected folder", mailbox))
             return None
 
 
 
-    def check_subject(self, var_subject, latest_email_id=0):
+    def check_subject(self, var_subject, pi_state, latest_email_id=0):
         """Looks for specific command codes in the email subject.
         
         var_subject: string
@@ -241,10 +258,9 @@ class Gmail(object):
         piheat_command = None
         ctrl_pio = Pio()
         self.piheat_db.my_login()
-        self.commands = ["st699", "CH", "HW"]
         for command in self.commands:
             if command in var_subject:
-                # Build the search string
+                # Build the search string, e.g. '(SUBJECT "st699")'
                 search = "\'(SUBJECT \"" + command + "\")\'"
                 # 'empty' collects the response from 'self.mail.search'
                 empty, sub_data = self.mail.search(None, search)
@@ -258,27 +274,29 @@ class Gmail(object):
                     elif command is 'CH':
                         # Get actual temperature
                         livtemp = self.piheat_db.my_query("SELECT livtemp FROM temp_log")
-                        if not target_temp:
-                            # Use a default value
-                            self.target_temp = 20
+                        self.target_temp = float(self.piheat_db.my_query("SELECT temp FROM target_temp"))
+#                        if not self.target_temp:
+#                            # Use a default value
+#                            self.target_temp = 20
                         ctrl_pio.ch_on(livtemp, self.target_temp)
                 elif '=' in var_subject:
                     if command is 'CH':
                         piheat_control = 'on'
                         livtemp = self.piheat_db.my_query("SELECT livtemp FROM temp_log")
-                        command_pos = var_subject.find('CH =')
+                        command_start = var_subject.find('CH =')
+                        command_end = var_subject.find(' @ ')
                         # string.find() returns -1 if it fails to find the string
-                        if command_pos != -1:
+                        if (command_start != -1) and (command_end != -1):
                             # Extract the string of numbers for target_temp
-                            temp_str = var_subject.strip()[command_pos+4:command_pos+7]
+                            temp_str = var_subject.strip()[command_start+4:command_end]
                         try:
                             # Test that a number has been found
-                            target_temp = int(temp_str)
+                            target_temp = float(temp_str)
                             sql = "UPDATE target_temp SET temp=(%s)"
                             self.piheat_db.my_update(sql, temp_str)
-                            self.target_temp = float(target_temp)
+                            self.target_temp = target_temp
                         except:
-                            pass
+                            self.target_temp = float(self.piheat_db.my_query("SELECT temp FROM target_temp"))
                         ctrl_pio.ch_on(livtemp, self.target_temp)
                 elif 'off' in var_subject:
                     piheat_control = 'off'
@@ -295,6 +313,8 @@ class Gmail(object):
                     logging.debug(message)
         #  Updates the 'control' in the 'piheat' table for the chosen 'command'
         if piheat_command and piheat_control:
+            pi_state[piheat_command] = piheat_control
+#            self.pi_state[piheat_command] = piheat_control
             try:
                 sql = "UPDATE piheat SET piheat_control=(%s) WHERE piheat_function=(%s)"
                 self.piheat_db.my_update(sql, piheat_control, piheat_command)
@@ -313,7 +333,7 @@ class Gmail(object):
         else:
             logging.debug("No matching emails were found")
         self.mail.expunge()
-        return (piheat_command, piheat_control)
+        return pi_state
 
 
     def logout(self):
@@ -516,6 +536,8 @@ class DBase(object):
 
 def main():
     """The main piheat.py function."""
+    logging.debug("TEST")
+    check_pio = Pio()
     logged_in = False
     conn = CheckNet()
     connection = conn.test()
@@ -526,14 +548,35 @@ def main():
         hub = VMSuperHub()
         # Should reset the hub
         hub.vm_login()
-    check_pio = Pio()
+    my_db = DBase()
+    rv = my_db.my_login()
+    if rv:
+        
+        pi_state = {}
+        # Get the state of each 'function' from 'piheat' table
+        for function in piheat.get_commands():
+            sql = "SELECT piheat_control FROM piheat WHERE piheat_function='" + function + "'"
+            pi_state[function] = my_db.my_query(sql)
+        # Need to invoke 'function_on' if 'on' in dictionary, else keep off
+        if pi_state['st699'] == 'on':
+            check_pio.st699_on()
+        if pi_state['HW'] == 'on':
+            check_pio.hw_on()
+        if pi_state['CH'] == 'on':
+            livtemp = my_db.my_query("SELECT livtemp FROM temp_log")
+            check_pio.ch_on(livtemp)
     while (check_pio.check_io(ST699)) and logged_in:
+        # Need this as a thread to run constantly, but still needs a target_temp...
+        if pi_state['CH'] == 'on':
+            livtemp = my_db.my_query("SELECT livtemp FROM temp_log")
+            check_pio.ch_on(livtemp)
         try:
             connection = conn.test()
             if connection:
                 gmail_state = piheat.get_mail_state()
                 if (gmail_state == 'AUTH') or (gmail_state == 'SELECTED'):
-                    piheat.read_folder('piheat', gmail_state)
+                    pi_state = piheat.read_folder('piheat', gmail_state, pi_state)
+                    
                 elif gmail.state == 'NONAUTH':
                     logged_in = piheat.login()
                 else:
