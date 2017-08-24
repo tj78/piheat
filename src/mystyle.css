@@ -43,26 +43,24 @@ p {
 
 
 .controllerOn {
-    width: 35%;
-    height: 40vh;
+    width: 90%;
+    height: 5%;
     background-color: #D56900;
     border: 1px solid black;
     padding: 10px 10px 10px 10px;
-    display: inline-block;
     margin: 1%;
-    vertical-align: middle;
+    display: inline-block;
 }
 
 
 .controllerOff {
-    width: 35%;
-    height: 40vh;
+    width: 90%;
+    height: 5%;
     background-color: blue;
     border: 1px solid black;
     padding: 10px 10px 10px 10px;
-    display: inline-block;
     margin: 1%;
-    vertical-align: middle;
+    display: inline-block;
 }
 
 

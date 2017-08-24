@@ -84,18 +84,18 @@
         
 		$hw = db_select("SELECT piheat_control FROM piheat WHERE piheat_function='HW'", piheat_control);
 		if($hw === 'on') {
-            echo("<div class='controllerOn'><h1>HOT WATER</h1></div>");
+            echo("<div class='controllerOn'><h2>HOT WATER - on</h2></div>");
         }
         else {
-            echo("<div class='controllerOff'><h1>HOT WATER</h1></div>");
+            echo("<div class='controllerOff'><h2>HOT WATER - off</h2></div>");
 		}
         $ch = db_select("SELECT piheat_control FROM piheat WHERE piheat_function='CH'", piheat_control);
         
         if($ch === 'on') {
-            echo("<div class='controllerOn'><h1>CENTRAL HEATING</h1>");
+            echo("<div class='controllerOn'><h2>CENTRAL HEATING - on</h2>");
         }
         else {
-            echo("<div class='controllerOff'><h1>CENTRAL HEATING</h1>");
+            echo("<div class='controllerOff'><h2>CENTRAL HEATING - off</h2>");
         }
         $livtemp = db_select("SELECT livtemp FROM temp_log", livtemp);
         $target_temp = db_select("SELECT temp FROM target_temp", temp);
