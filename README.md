@@ -3,6 +3,16 @@ Raspberry Pi heating &amp; hot water controller
 
 For a full background to the project, with reference materials, please read [background.md](./docs/background.md)
 
+# Updates
+- Changed whole program from structure to Object Oriented.
+- Fixed 'bugs' [#4](../../issues/4) & [#5](../../issues/5).
+- Implemented 'enhancements' [#3](../../issues/3) & [#6](../../issues/6).
+- Status has been stored in a MySQL database.
+- [Web page](./src/piheat.php) in HTML & PHP gets the status from MySQL and displays it (OK on mobile too!).
+# To be done...
+- Fix ['bug' #2](../../issues/2).
+- Change from MySQL to Redis - will reduce the load on the Raspberry Pi and should prolong the life of the SD card.
+
 # Usage
 ## [piheat.py](./src/piheat.py)
 Root privileges are required to run [piheat.py](./src/piheat.py)
