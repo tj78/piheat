@@ -108,10 +108,7 @@ class Gmail(object):
         """
         mailhost = 'imap.gmail.com'
         g_secrets = UserData()
-        if debug:
-            self.mail = imaplib2.IMAP4_SSL(host=mailhost, debug=4, timeout=1)
-        else:
-            self.mail = imaplib2.IMAP4_SSL(host=mailhost, timeout=1)
+        self.mail = imaplib2.IMAP4_SSL(host=mailhost, debug=4, timeout=5)
         self.piheat_db = DBase()
         self.commands = ["st699", "CH", "HW"]
         self.target_temp = None
@@ -193,6 +190,16 @@ class Gmail(object):
         
         return: string
         """
+        def cb(cb_arg_list):
+            response, cb_arg, error = cb_arg_list
+            typ, data = response
+            if not data:
+                return
+            for field in data:
+                if type(field) is not tuple:
+                    continue
+                print('Message %s:\n%s\n'
+                    % (field[0].split()[0], field[1]))
         # Gmail was timing out & causing the service to stop
         # so need to check connection to Gmail, if it fails, login again
         # Now with use of IMAP IDLE command this should no longer be necessary.
@@ -212,8 +219,10 @@ class Gmail(object):
         else:
             raise RuntimeError("read_folder:  Not in 'AUTH' or 'SELECTED' state.")
         # We have reached the 'SELECTED' state, so we can continue
-        rv = self.mail.idle(timeout=1290)
-        logging.debug(("IDLE response is:  ", rv))
+        rv = self.mail.idle()
+#        rv = self.mail.idle(callback=cb)
+        # IDLE response is [NONE] if message received or [TIMEOUT] after 29 minutes 
+        logging.debug(self.mail.response('IDLE'))
         # 'empty' collects the response from 'self.mail.search'
         empty, data = self.mail.search(None, 'ALL')
         id_list = data[0].split()
@@ -275,9 +284,6 @@ class Gmail(object):
                         # Get actual temperature
                         livtemp = self.piheat_db.my_query("SELECT livtemp FROM temp_log")
                         self.target_temp = float(self.piheat_db.my_query("SELECT temp FROM target_temp"))
-#                        if not self.target_temp:
-#                            # Use a default value
-#                            self.target_temp = 20
                         ctrl_pio.ch_on(livtemp, self.target_temp)
                 elif '=' in var_subject:
                     if command is 'CH':
@@ -286,9 +292,14 @@ class Gmail(object):
                         command_start = var_subject.find('CH =')
                         command_end = var_subject.find(' @ ')
                         # string.find() returns -1 if it fails to find the string
-                        if (command_start != -1) and (command_end != -1):
+                        if(command_end == -1):
+                            # A normal email
+                            temp_str = var_subject.strip()[command_start+4:]
+                            print("temp_str is.....", temp_str)
+                        elif (command_start != -1) and (command_end != -1):
                             # Extract the string of numbers for target_temp
                             temp_str = var_subject.strip()[command_start+4:command_end]
+                            print("temp_str is.....", temp_str)
                         try:
                             # Test that a number has been found
                             target_temp = float(temp_str)
@@ -453,8 +464,8 @@ class Pio(object):
         return: boolean
         """
         logging.info("Switching central heating on.")
-        logging.debug(actual_temp)
-        logging.debug(target_temp)
+        print("actual_temp is...", actual_temp)
+        print("target_temp is...", target_temp)
         # Check target temperature against actual room temperature
         if actual_temp < target_temp:
             logging.info("room is not warm enough")
@@ -560,16 +571,19 @@ def main():
         # Need to invoke 'function_on' if 'on' in dictionary, else keep off
         if pi_state['st699'] == 'on':
             check_pio.st699_on()
-        if pi_state['HW'] == 'on':
+        elif pi_state['HW'] == 'on':
             check_pio.hw_on()
-        if pi_state['CH'] == 'on':
+        elif pi_state['CH'] == 'on':
             livtemp = my_db.my_query("SELECT livtemp FROM temp_log")
-            check_pio.ch_on(livtemp)
+            target_temp = float(my_db.my_query("SELECT temp FROM target_temp"))
+            check_pio.ch_on(livtemp, target_temp)
+        print(pi_state)
     while (check_pio.check_io(ST699)) and logged_in:
-        # Need this as a thread to run constantly, but still needs a target_temp...
-        if pi_state['CH'] == 'on':
-            livtemp = my_db.my_query("SELECT livtemp FROM temp_log")
-            check_pio.ch_on(livtemp)
+#        # Need this as a thread to run constantly
+#        if pi_state['CH'] == 'on':
+#            livtemp = my_db.my_query("SELECT livtemp FROM temp_log")
+#            target_temp = my_db.my_query("SELECT temp FROM target_temp")
+#            check_pio.ch_on(livtemp, target_temp)
         try:
             connection = conn.test()
             if connection:
